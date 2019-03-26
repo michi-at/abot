@@ -36,6 +36,16 @@ namespace Abot.Crawler
         event EventHandler<PageLinksCrawlDisallowedArgs> PageLinksCrawlDisallowed;
 
         /// <summary>
+        /// Synchronous event that is fired before the IPageRequester sends request.
+        /// </summary>
+        event EventHandler<PageRequestSentArgs> PageRequestSent;
+
+        /// <summary>
+        /// Synchronous event that is fired after the IPageRequester gets response.
+        /// </summary>
+        event EventHandler<PageResponseReceivedArgs> PageResponseReceived;
+
+        /// <summary>
         /// Asynchronous event that is fired before a page is crawled.
         /// </summary>
         event EventHandler<PageCrawlStartingArgs> PageCrawlStartingAsync;
@@ -63,13 +73,13 @@ namespace Abot.Crawler
         /// <summary>
         /// Synchronous method that registers a delegate to be called to determine whether the page's content should be dowloaded
         /// </summary>
-        /// <param name="shouldDownloadPageContent"></param>
+        /// <param name="decisionMaker"></param>
         void ShouldDownloadPageContent(Func<CrawledPage, CrawlContext, CrawlDecision> decisionMaker);
 
         /// <summary>
         /// Synchronous method that registers a delegate to be called to determine whether a page's links should be crawled or not
         /// </summary>
-        /// <param name="shouldCrawlPageLinksDelegate"></param>
+        /// <param name="decisionMaker"></param>
         void ShouldCrawlPageLinks(Func<CrawledPage, CrawlContext, CrawlDecision> decisionMaker);
 
         /// <summary>
@@ -191,7 +201,11 @@ namespace Abot.Crawler
 
             _threadManager = threadManager ?? new TaskThreadManager(_crawlContext.CrawlConfiguration.MaxConcurrentThreads > 0 ? _crawlContext.CrawlConfiguration.MaxConcurrentThreads : Environment.ProcessorCount);
             _scheduler = scheduler ?? new Scheduler(_crawlContext.CrawlConfiguration.IsUriRecrawlingEnabled, null, null);
+
             _pageRequester = pageRequester ?? new PageRequester(_crawlContext.CrawlConfiguration);
+            _pageRequester.PageRequestSent += (sender, request) => PageRequestSent?.Invoke(this, request);
+            _pageRequester.PageResponseReceived += (sender, response) => PageResponseReceived?.Invoke(this, response);
+
             _crawlDecisionMaker = crawlDecisionMaker ?? new CrawlDecisionMaker();
 
             if (_crawlContext.CrawlConfiguration.MaxMemoryUsageInMb > 0
@@ -309,6 +323,16 @@ namespace Abot.Crawler
         /// Synchronous event that is fired when the ICrawlDecisionMaker.ShouldCrawlLinks impl returned false. This means the page's links were not crawled.
         /// </summary>
         public event EventHandler<PageLinksCrawlDisallowedArgs> PageLinksCrawlDisallowed;
+
+        /// <summary>
+        /// Synchronous event that is fired before the IPageRequester sends request.
+        /// </summary>
+        public event EventHandler<PageRequestSentArgs> PageRequestSent;
+
+        /// <summary>
+        /// Synchronous event that is fired after the IPageRequester gets response.
+        /// </summary>
+        public event EventHandler<PageResponseReceivedArgs> PageResponseReceived;
 
         protected virtual void FirePageCrawlStartingEvent(PageToCrawl pageToCrawl)
         {
@@ -477,7 +501,7 @@ namespace Abot.Crawler
         /// <summary>
         /// Synchronous method that registers a delegate to be called to determine whether the page's content should be dowloaded
         /// </summary>
-        /// <param name="shouldDownloadPageContent"></param>
+        /// <param name="decisionMaker"></param>
         public void ShouldDownloadPageContent(Func<CrawledPage, CrawlContext, CrawlDecision> decisionMaker)
         {
             _shouldDownloadPageContentDecisionMaker = decisionMaker;
@@ -486,7 +510,7 @@ namespace Abot.Crawler
         /// <summary>
         /// Synchronous method that registers a delegate to be called to determine whether a page's links should be crawled or not
         /// </summary>
-        /// <param name="shouldCrawlPageLinksDelegate"></param>
+        /// <param name="decisionMaker"></param>
         public void ShouldCrawlPageLinks(Func<CrawledPage, CrawlContext, CrawlDecision> decisionMaker)
         {
             _shouldCrawlPageLinksDecisionMaker = decisionMaker;
@@ -702,7 +726,7 @@ namespace Abot.Crawler
                     _scheduler.Add(crawledPage);
                 }   
             }
-            catch (OperationCanceledException oce)
+            catch (OperationCanceledException)
             {
                 _logger.DebugFormat("Thread cancelled while crawling/processing page [{0}]", pageToCrawl.Uri);
                 throw;
@@ -930,7 +954,6 @@ namespace Abot.Crawler
                 return;
             }
 
-            int domainCount = 0;
             Interlocked.Increment(ref _crawlContext.CrawledCount);
             _crawlContext.CrawlCountByDomain.AddOrUpdate(pageToCrawl.Uri.Authority, 1, (key, oldValue) => oldValue + 1);
         }

@@ -21,6 +21,16 @@ namespace Abot.Core
         ///// Asynchronously make an http web request to the url and download its content based on the param func decision
         ///// </summary>
         //Task<CrawledPage> MakeRequestAsync(Uri uri, Func<CrawledPage, CrawlDecision> shouldDownloadContent);
+
+        /// <summary>
+        /// Synchronous event that is fired before the IPageRequester sends request.
+        /// </summary>
+        event EventHandler<PageRequestSentArgs> PageRequestSent;
+
+        /// <summary>
+        /// Synchronous event that is fired after the IPageRequester gets response.
+        /// </summary>
+        event EventHandler<PageResponseReceivedArgs> PageResponseReceived;
     }
 
     [Serializable]
@@ -31,6 +41,46 @@ namespace Abot.Core
         protected CrawlConfiguration _config;
         protected IWebContentExtractor _extractor;
         protected CookieContainer _cookieContainer = new CookieContainer();
+
+        #region Synchronous Events
+
+        /// <summary>
+        /// Synchronous event that is fired before the IPageRequester sends request.
+        /// </summary>
+        public event EventHandler<PageRequestSentArgs> PageRequestSent;
+
+        /// <summary>
+        /// Synchronous event that is fired after the IPageRequester gets response.
+        /// </summary>
+        public event EventHandler<PageResponseReceivedArgs> PageResponseReceived;
+
+        protected virtual void FirePageRequestSentEvent(HttpWebRequest request)
+        {
+            try
+            {
+                PageRequestSent?.Invoke(this, new PageRequestSentArgs(request));
+            }
+            catch (Exception e)
+            {
+                _logger.Error("An unhandled exception was thrown by a subscriber of the PageRequestSent event for url:" + request.RequestUri.AbsoluteUri);
+                _logger.Error(e);
+            }
+        }
+
+        protected virtual void FirePageResponseReceivedEvent(HttpWebResponse response)
+        {
+            try
+            {
+                PageResponseReceived?.Invoke(this, new PageResponseReceivedArgs(response));
+            }
+            catch (Exception e)
+            {
+                _logger.Error("An unhandled exception was thrown by a subscriber of the PageResponseReceived event for url:" + response.ResponseUri.AbsoluteUri);
+                _logger.Error(e);
+            }
+        }
+
+        #endregion
 
         public PageRequester(CrawlConfiguration config)
             : this(config, null)
@@ -79,6 +129,9 @@ namespace Abot.Core
             {
                 request = BuildRequestObject(uri);
                 crawledPage.RequestStarted = DateTime.Now;
+
+                FirePageRequestSentEvent(request);
+
                 response = (HttpWebResponse)request.GetResponse();
                 ProcessResponseObject(response);
             }
@@ -105,6 +158,8 @@ namespace Abot.Core
                     crawledPage.RequestCompleted = DateTime.Now;
                     if (response != null)
                     {
+                        FirePageResponseReceivedEvent(response);
+
                         crawledPage.HttpWebResponse = new HttpWebResponseWrapper(response);
                         CrawlDecision shouldDownloadContentDecision = shouldDownloadContent(crawledPage);
                         if (shouldDownloadContentDecision.Allow)
