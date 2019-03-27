@@ -97,6 +97,7 @@
     <Compile Include="Core\BloomFilterCrawledUrlRepository.cs" />
     <Compile Include="Core\CompactCrawledUrlRepository.cs" />
     <Compile Include="Core\AngleSharpHyperLinkParser.cs" />
+    <Compile Include="Core\PageRequesterWithRepeats.cs" />
     <Compile Include="Core\PageRequestSentArgs.cs" />
     <Compile Include="Core\PageResponseReceivedArgs.cs" />
     <Compile Include="Crawler\RobotsDotTextParseCompletedArgs.cs" />
