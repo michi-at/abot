@@ -19,6 +19,12 @@ namespace Abot.Core
             get { return (CrawlBehaviorElement)this["crawlBehavior"]; }
         }
 
+        [ConfigurationProperty("requestBehavior")]
+        public RequestBehaviorElement RequestBehavior
+        {
+            get { return (RequestBehaviorElement)this["requestBehavior"]; }
+        }
+
         [ConfigurationProperty("politeness")]
         public PolitenessElement Politeness
         {
@@ -44,6 +50,7 @@ namespace Abot.Core
             Map(CrawlBehavior, config);
             Map(Politeness, config);
             Map(Authorization, config);
+            Map(RequestBehavior, config);
 
             foreach (ExtensionValueElement element in ExtensionValues)
                 config.ConfigurationExtensions.Add(element.Key, element.Value);
@@ -80,6 +87,11 @@ namespace Abot.Core
             dest.IsForcedLinkParsingEnabled = src.IsForcedLinkParsingEnabled;
             dest.MaxRetryCount = src.MaxRetryCount;
             dest.MinRetryDelayInMilliseconds = src.MinRetryDelayInMilliseconds;
+        }
+
+        private void Map(RequestBehaviorElement src, CrawlConfiguration dest)
+        {
+            dest.NumberOfRecurrentRequests = src.NumberOfRecurrentRequests;
         }
 
         private void Map(PolitenessElement src, CrawlConfiguration dest)
@@ -376,6 +388,20 @@ namespace Abot.Core
         public int MinRetryDelayInMilliseconds
         {
             get { return (int)this["minRetryDelayInMilliseconds"]; }
+        }
+    }
+
+    [Serializable]
+    public class RequestBehaviorElement : ConfigurationElement
+    {
+        /// <summary>
+        /// Specifies how many times PageRequesterWithRepeats must send request.
+        /// Ignored in other IPageRequester implementations.
+        /// </summary>
+        [ConfigurationProperty("numberOfRecurrentRequests", IsRequired = false, DefaultValue = 1)]
+        public int NumberOfRecurrentRequests
+        {
+            get { return (int)this["numberOfRecurrentRequests"]; }
         }
     }
 

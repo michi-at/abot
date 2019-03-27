@@ -33,6 +33,7 @@ namespace Abot.Core
         event EventHandler<PageResponseReceivedArgs> PageResponseReceived;
     }
 
+    /// <inheritdoc cref="PageRequester"/>
     [Serializable]
     public class PageRequester : IPageRequester
     {
@@ -54,11 +55,11 @@ namespace Abot.Core
         /// </summary>
         public event EventHandler<PageResponseReceivedArgs> PageResponseReceived;
 
-        protected virtual void FirePageRequestSentEvent(HttpWebRequest request)
+        protected virtual void FirePageRequestSentEvent(CrawledPage crawledPage, HttpWebRequest request)
         {
             try
             {
-                PageRequestSent?.Invoke(this, new PageRequestSentArgs(request));
+                PageRequestSent?.Invoke(this, new PageRequestSentArgs(crawledPage, request));
             }
             catch (Exception e)
             {
@@ -67,11 +68,11 @@ namespace Abot.Core
             }
         }
 
-        protected virtual void FirePageResponseReceivedEvent(HttpWebResponse response)
+        protected virtual void FirePageResponseReceivedEvent(CrawledPage crawledPage, HttpWebResponse response)
         {
             try
             {
-                PageResponseReceived?.Invoke(this, new PageResponseReceivedArgs(response));
+                PageResponseReceived?.Invoke(this, new PageResponseReceivedArgs(crawledPage, response));
             }
             catch (Exception e)
             {
@@ -130,7 +131,7 @@ namespace Abot.Core
                 request = BuildRequestObject(uri);
                 crawledPage.RequestStarted = DateTime.Now;
 
-                FirePageRequestSentEvent(request);
+                FirePageRequestSentEvent(crawledPage, request);
 
                 response = (HttpWebResponse)request.GetResponse();
                 ProcessResponseObject(response);
@@ -158,7 +159,7 @@ namespace Abot.Core
                     crawledPage.RequestCompleted = DateTime.Now;
                     if (response != null)
                     {
-                        FirePageResponseReceivedEvent(response);
+                        FirePageResponseReceivedEvent(crawledPage, response);
 
                         crawledPage.HttpWebResponse = new HttpWebResponseWrapper(response);
                         CrawlDecision shouldDownloadContentDecision = shouldDownloadContent(crawledPage);

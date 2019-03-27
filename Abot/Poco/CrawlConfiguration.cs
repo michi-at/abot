@@ -21,6 +21,7 @@ namespace Abot.Poco
             HttpServicePointConnectionLimit = 200;
             HttpRequestTimeoutInSeconds = 15;
             IsSslCertificateValidationEnabled = true;
+            NumberOfRecurrentRequests = 1;
         }
 
         #region crawlBehavior
@@ -246,6 +247,21 @@ namespace Abot.Poco
         /// Specifies whether to use default credentials.
         /// </summary>
         public bool UseDefaultCredentials { get; set; }
+
+        #endregion
+
+        #region requestBehavior
+
+        /// <summary>
+        /// Specifies how many times PageRequesterWithRepeats must send request.
+        /// Ignored in other IPageRequester implementations.
+        /// </summary>
+        public int NumberOfRecurrentRequests
+        {
+            get { return _numberOfRecurrentRequests; }
+            set { _numberOfRecurrentRequests = (value >= 1) ? value : 1; }
+        }
+        private int _numberOfRecurrentRequests;
 
         #endregion
     }
